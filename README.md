@@ -1,3 +1,5 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/flarebuild/buildkite-agent-metrics-adapter.svg)](https://pkg.go.dev/github.com/flarebuild/buildkite-agent-metrics-adapter)
+
 # buildkite-agent-metrics-adapter
 
 This application implements Kubernetes External Metrics API for Buildkite agent metrics.
