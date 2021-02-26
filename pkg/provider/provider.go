@@ -12,6 +12,8 @@ import (
 	bk "github.com/buildkite/buildkite-agent-metrics/collector"
 	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	"github.com/flarebuild/buildkite-agent-metrics-adapter/pkg/util"
 )
 
 // buildkiteProvider is implementation of provider.ExternalMetricsProvider
@@ -25,6 +27,7 @@ type buildkiteProvider struct {
 
 func (p *buildkiteProvider) GetExternalMetric(namespace string, metricSelector labels.Selector, info provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
 	metrics := &external_metrics.ExternalMetricValueList{}
+	//klog.Infof("metric: %s, ns: %s, selector: %s", info.Metric, namespace, metricSelector.String())
 	for _, metric := range p.metrics[info.Metric].Items {
 		if metricSelector.Matches(labels.Set(metric.MetricLabels)) {
 			metrics.Items = append(metrics.Items, metric)
@@ -49,7 +52,7 @@ func (p *buildkiteProvider) updateMetrics() (time.Duration, error) {
 
 	if p.result != nil {
 		for n, i := range p.result.Totals {
-			metricName := "Total"+n
+			metricName := util.ToSnakeCase("Total"+n)
 			metricsInfo = append(metricsInfo, provider.ExternalMetricInfo{Metric: metricName})
 			metrics[metricName] = external_metrics.ExternalMetricValueList{
 				Items: []external_metrics.ExternalMetricValue{{
@@ -59,14 +62,26 @@ func (p *buildkiteProvider) updateMetrics() (time.Duration, error) {
 				}},
 			}
 		}
-		qMetricNames := map[string]struct{}{}
 		for q := range p.result.Queues {
-			for n := range p.result.Queues[q] {
-				qMetricNames[n] = struct{}{}
+			metricLabels := map[string]string{"queue": q}
+			for n, i := range p.result.Queues[q] {
+				metricName := util.ToSnakeCase("Queue"+n)
+				metricValue := external_metrics.ExternalMetricValue{
+					MetricName: metricName,
+					MetricLabels: metricLabels,
+					Timestamp: meta.Time{Time: t},
+					Value: *resource.NewQuantity(int64(i), resource.DecimalSI),
+				}
+				qMetrics, ok := metrics[metricName]
+				if ok { // already saw this metric, but for another queue
+					qMetrics.Items = append(qMetrics.Items, metricValue)
+				} else { // see this metric for the first time
+					metrics[metricName] = external_metrics.ExternalMetricValueList{
+						Items: []external_metrics.ExternalMetricValue{metricValue},
+					}
+					metricsInfo = append(metricsInfo, provider.ExternalMetricInfo{Metric: metricName})
+				}
 			}
-		}
-		for n := range qMetricNames {
-			metricsInfo = append(metricsInfo, provider.ExternalMetricInfo{Metric: "Queue"+n})
 		}
 	}
 
