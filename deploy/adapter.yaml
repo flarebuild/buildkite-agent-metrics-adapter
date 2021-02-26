@@ -51,7 +51,7 @@ spec:
       serviceAccountName: buildkite-metrics-apiserver
       containers:
       - name: buildkite-metrics-apiserver
-        image: buildkite-agent-metrics-adapter:take8
+        image: buildkite-agent-metrics-adapter:latest
         imagePullPolicy: IfNotPresent
         args:
         - /adapter
@@ -113,41 +113,26 @@ spec:
   insecureSkipTLSVerify: true
   groupPriorityMinimum: 100
   versionPriority: 100
-#---
-#apiVersion: rbac.authorization.k8s.io/v1
-#kind: ClusterRole
-#metadata:
-#  name: buildkite-metrics-server-resources
-#rules:
-#- apiGroups:
-#  - custom.metrics.k8s.io
-#  resources: ["*"]
-#  verbs: ["*"]
-#---
-#apiVersion: rbac.authorization.k8s.io/v1
-#kind: ClusterRole
-#metadata:
-#  name: buildkite-metrics-resource-reader
-#rules:
-#- apiGroups:
-#  - ""
-#  resources:
-#  - namespaces
-#  - pods
-#  - services
-#  verbs:
-#  - get
-#  - list
-#---
-#apiVersion: rbac.authorization.k8s.io/v1
-#kind: ClusterRoleBinding
-#metadata:
-#  name: hpa-controller-buildkite-metrics
-#roleRef:
-#  apiGroup: rbac.authorization.k8s.io
-#  kind: ClusterRole
-#  name: buildkite-metrics-server-resources
-#subjects:
-#- kind: ServiceAccount
-#  name: horizontal-pod-autoscaler
-#  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: buildkite-metrics-server-resources
+rules:
+- apiGroups:
+  - external.metrics.k8s.io
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hpa-controller-buildkite-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: buildkite-metrics-server-resources
+subjects:
+- kind: ServiceAccount
+  name: horizontal-pod-autoscaler
+  namespace: kube-system
